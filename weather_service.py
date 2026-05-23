@@ -53,6 +53,7 @@ _VN_TZ = timezone(timedelta(hours=7))
 # ────────────────────────────────────────────────────────────────────────────
 _WEATHER_CACHE: dict[str, dict] = {}
 _CACHE_TTL = 30 * 60  # 30 phút (giây)
+_VN_TZ = timezone(timedelta(hours=7))
 
 def _cache_get(key: str) -> dict | None:
     entry = _WEATHER_CACHE.get(key)
@@ -347,6 +348,9 @@ def get_weather(serpapi_key: str, location: str, lang: str = "vi", departure_dat
                         "temp":  round(temp, 1),
                         "desc":  _owm_condition_vi(w_id, item["weather"][0].get("description",""))
                     })
+            if departure_date:
+                days = {k: v for k, v in days.items() if k >= departure_date}
+
             if departure_date:
                 days = {k: v for k, v in days.items() if k >= departure_date}
 

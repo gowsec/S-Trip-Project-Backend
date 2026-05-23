@@ -33,10 +33,13 @@ app.config.update(
 
 # FIX CORS: must specify origins explicitly
 # Browser blocks cookies when using wildcard '*' with credentials:true
+import re as _re
 _FRONTEND_ORIGINS = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # ✅ Bắt mọi port Codespaces (3000, 5173, v.v.)
+    _re.compile(r"https://.*\.app\.github\.dev$"),
 ]
 CORS(app, supports_credentials=True, origins=_FRONTEND_ORIGINS)
 
