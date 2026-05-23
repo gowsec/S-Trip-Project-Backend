@@ -45,8 +45,9 @@ from __future__ import annotations
 import os
 import time
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
+_VN_TZ = timezone(timedelta(hours=7))
 # ────────────────────────────────────────────────────────────────────────────
 # 0. IN-MEMORY CACHE — tránh gọi OpenWeatherMap lặp lại (TTL 30 phút)
 # ────────────────────────────────────────────────────────────────────────────
@@ -158,7 +159,7 @@ def _day_vi(dt: datetime) -> str:
 # 5. HÀM CHÍNH: GET_WEATHER
 # ────────────────────────────────────────────────────────────────────────────
 
-def get_weather(serpapi_key: str, location: str, lang: str = "vi") -> dict:
+def get_weather(serpapi_key: str, location: str, lang: str = "vi", departure_date: str | None = None) -> dict:
     """
     Lấy thời tiết hiện tại + dự báo 7 ngày qua OpenWeatherMap.
     Giữ nguyên signature cũ (serpapi_key được bỏ qua).
@@ -255,7 +256,7 @@ def get_weather(serpapi_key: str, location: str, lang: str = "vi") -> dict:
     }
 
     loc = _ALIAS.get(loc_lower, loc)
-    cache_key = f"{loc.lower()}:{lang}"
+    cache_key = f"{loc.lower()}:{lang}:{departure_date or ''}"
 
     # Trả cache nếu còn hạn
     cached = _cache_get(cache_key)
@@ -318,7 +319,7 @@ def get_weather(serpapi_key: str, location: str, lang: str = "vi") -> dict:
             # Gom theo ngày (key = "YYYY-MM-DD")
             days: dict[str, dict] = {}
             for item in fc_data:
-                dt   = datetime.fromtimestamp(item["dt"], tz=timezone.utc)
+                dt   = datetime.fromtimestamp(item["dt"], tz=_VN_TZ)
                 key  = dt.strftime("%Y-%m-%d")
                 temp = item["main"]["temp"]
                 pop  = item.get("pop", 0)  # probability of precipitation 0-1
@@ -346,6 +347,8 @@ def get_weather(serpapi_key: str, location: str, lang: str = "vi") -> dict:
                         "temp":  round(temp, 1),
                         "desc":  _owm_condition_vi(w_id, item["weather"][0].get("description",""))
                     })
+            if departure_date:
+                days = {k: v for k, v in days.items() if k >= departure_date}
 
             for key, d in sorted(days.items())[:7]:
                 cond = _owm_condition_vi(d["w_id"], d["desc"])
