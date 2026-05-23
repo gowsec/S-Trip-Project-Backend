@@ -33,10 +33,13 @@ app.config.update(
 
 # FIX CORS: must specify origins explicitly
 # Browser blocks cookies when using wildcard '*' with credentials:true
+import re as _re
 _FRONTEND_ORIGINS = [
     os.getenv("FRONTEND_URL", "http://localhost:3000"),
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # ✅ Bắt mọi port Codespaces (3000, 5173, v.v.)
+    _re.compile(r"https://.*\.app\.github\.dev$"),
 ]
 CORS(app, supports_credentials=True, origins=_FRONTEND_ORIGINS)
 
@@ -550,6 +553,7 @@ def plan_trip():
             "success": True,
             "plan": {
                 # Thông tin sân bay (tương thích ngược với frontend cũ)
+                "departure_date": departure_date,
                 "flight_meta": flight_meta,
                 "flights":     flights or [],
                 # ✅ MỚI: transport chứa đầy đủ lựa chọn phương tiện
@@ -872,11 +876,12 @@ from weather_service import get_weather as _get_weather
 
 @app.route("/api/weather", methods=["GET"])
 def get_weather():
-    location = request.args.get("location", "").strip()
-    lang     = request.args.get("lang", "vi")
+    location       = request.args.get("location", "").strip()
+    lang           = request.args.get("lang", "vi")
+    departure_date = request.args.get("departure_date", "").strip() or None
     if not location:
         return jsonify({"success": False, "error": "Thiếu tham số location"}), 400
-    result = _get_weather(SERPAPI_KEY, location, lang)
+    result = _get_weather(SERPAPI_KEY, location, lang, departure_date)
     # Trả 200 kể cả khi lỗi — tránh frontend retry vô hạn
     # Chỉ 502 khi lỗi không mong đợi (exception thật)
     error_code = result.get("error_code", "")
